@@ -1,65 +1,74 @@
 # EtherShield
 ## Ethereum Smart Contract Security & Exploitation Lab
 
-### 1. Project Objective
-EtherShield is an educational project for studying Ethereum smart
-contract security in a local testing environment.
+## 1. Project Objective
+EtherShield is an educational lab for studying Ethereum smart
+contract security using Solidity, Foundry and Slither.
 
-### 2. Vulnerability Studied
-The project studies reentrancy in a bank contract.
-The vulnerable implementation sends ETH before updating the
-user's stored balance.
+## 2. Project Structure
+- `src/vulnerable/VulnerableBank.sol`: intentionally vulnerable bank
+- `src/secure/SecureBank.sol`: bank with a reentrancy mitigation
+- `test/exploits/Reentrancy.t.sol`: local exploit demonstration
+- `test/security/SecureBank.t.sol`: security regression test
+- `README.md`: project setup and commands
 
-### 3. Vulnerable Implementation
-File: src/vulnerable/VulnerableBank.sol
+## 3. Vulnerability: Reentrancy
+In the vulnerable contract, `withdraw()` sends ETH to the caller
+before setting the caller's balance to zero.
 
-The withdrawal function performs an external call before setting
-the user's balance to zero. A malicious receiver can re-enter
-the withdrawal function before the balance is updated.
+A malicious receiver can call `withdraw()` again during the
+external call, before the original balance update is completed.
 
-### 4. Exploit Demonstration
-Test: test/exploits/Reentrancy.t.sol
+## 4. Exploit Demonstration
+The Foundry test `test_ReentrancyDrainsVictimFunds()` passed.
 
-The local Foundry test demonstrates that the vulnerable contract
-can lose the victim's deposited ETH in the simulated scenario.
+In the simulated scenario, the bank starts with 5 ETH deposited
+by the victim. The attacker deposits 1 ETH and exploits the
+withdrawal logic to receive 6 ETH in total.
 
-### 5. Security Fix
-File: src/secure/SecureBank.sol
+This demonstration uses simulated ETH in a local test environment.
 
-The fixed implementation sets the user's balance to zero before
-making the external ETH transfer. This follows the
-Checks-Effects-Interactions pattern.
+## 5. Mitigation
+The secure contract sets `balances[msg.sender]` to zero before
+making the external ETH transfer.
 
-### 6. Regression Test
-Test: test/security/SecureBank.t.sol
+This follows the Checks-Effects-Interactions pattern and prevents
+the demonstrated reentrancy scenario.
 
-The test verifies that the simulated reentrancy attempt does not
-drain the victim's funds from the secure implementation.
+## 6. Test Results
+The full Foundry test run reported:
+- 4 tests passed
+- 0 tests failed
+- 0 tests skipped
 
-### 7. Testing
-Run the full test suite with:
+The test suites include the vulnerable contract exploit test,
+the secure contract regression test, and the default Counter tests.
 
-    forge test -vv
+## 7. Slither Static Analysis
+Analysis of `VulnerableBank.sol` reported 3 findings:
+- `reentrancy-eth`: the external ETH call occurs before the
+  balance is updated.
+- `solc-version`: the pragma `^0.8.20` allows compiler versions
+  that Slither flags for known compiler issues.
+- `low-level-calls`: the contract uses a low-level ETH call.
 
-Record the actual test results here before submission.
+Analysis of `SecureBank.sol` reported 2 findings:
+- `solc-version`: the same pragma constraint warning.
+- `low-level-calls`: the ETH transfer uses a low-level call.
 
-### 8. Static Analysis
-Run:
+Slither did not report the reentrancy detector for the secure
+contract in this analysis. This does not prove complete security.
+The low-level-call finding requires context-based review, and the
+compiler-version warning should be addressed separately.
 
-    slither src/vulnerable/VulnerableBank.sol
-    slither src/secure/SecureBank.sol
+## 8. Limitations
+This is a small educational demonstration, not a production-ready
+banking contract or a complete security audit.
 
-Record the actual findings for both contracts here.
-Static analysis can produce false positives and does not prove
-that a contract is completely secure.
+Only the demonstrated reentrancy scenario has been tested.
+Additional tests and review are needed before real deployment.
 
-### 9. Limitations
-This is a local educational demonstration using simulated ETH.
-It is not a production-ready banking contract and has not been
-audited for all possible vulnerabilities.
-
-### 10. Conclusion
-EtherShield demonstrates how a reentrancy issue can be reproduced
-with Foundry tests, how the Checks-Effects-Interactions pattern
-can mitigate it, and how static analysis can support a security
-review.
+## 9. Conclusion
+EtherShield demonstrates a reentrancy vulnerability, reproduces
+it in Foundry, applies a state-update mitigation, and compares
+static-analysis results for vulnerable and secure implementations.
